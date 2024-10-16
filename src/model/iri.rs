@@ -17,3 +17,15 @@ impl Display for Iri {
         write!(f, "{}", self.iri)
     }
 }
+
+impl From<String> for Iri {
+    fn from(string: String) -> Self {
+        Iri { iri: Twine::from(string) }
+    }
+}
+
+impl From<&str> for Iri {
+    fn from(string: &str) -> Self {
+        Iri { iri: Twine::from(string) }
+    }
+}
