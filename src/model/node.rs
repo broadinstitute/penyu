@@ -18,3 +18,8 @@ pub enum Entity {
 pub struct BlankNode {
     id: Arc<String>
 }
+
+impl BlankNode {
+    pub fn id(&self) -> &str { self.id.as_str() }
+}
+

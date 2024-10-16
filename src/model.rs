@@ -1,6 +1,6 @@
-mod node;
-mod iri;
-mod literal;
+pub(crate) mod node;
+pub(crate) mod iri;
+pub(crate) mod literal;
 mod triple;
-mod graph;
+pub(crate) mod graph;
 
