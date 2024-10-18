@@ -1,9 +1,10 @@
 use std::fmt::Display;
+use strey::Strey;
 use crate::utils::twine::Twine;
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq)]
 pub struct Iri {
-    iri: Twine
+    iri: Strey
 }
 
 impl Iri {

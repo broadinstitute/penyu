@@ -11,3 +11,4 @@ license = "BSD-3-Clause"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+strey = { git = "https://github.com/broadinstitute/strey.git", rev = "311ce0cb5f896adf51ebac7b13a7f0437770c3f3" }
