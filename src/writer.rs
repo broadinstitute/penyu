@@ -5,6 +5,7 @@ use crate::model::graph::Graph;
 use crate::model::node::{BlankNode, Entity, Node};
 use crate::model::iri::Iri;
 use crate::model::literal::{Literal, LiteralTag};
+use crate::vocabs;
 
 pub fn write<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), PenyuError> {
     write_prefixes(writer, graph)?;
@@ -96,8 +97,12 @@ fn write_literal<W: Write>(writer: &mut W, literal: &Literal, prefixes: &BTreeMa
     -> Result<(), PenyuError> {
     match &literal.literal_tag {
         LiteralTag::Type(type_iri) => {
-            write!(writer, "\"{}\"^^", literal.string)?;
-            write_iri(writer, type_iri, prefixes)?
+            if type_iri == vocabs::xsd::STRING {
+                write!(writer, "\"{}\"", literal.string)?
+            } else {
+                write!(writer, "\"{}\"^^", literal.string)?;
+                write_iri(writer, type_iri, prefixes)?
+            }
         }
         LiteralTag::LangTag(lang_tag) => {
             write!(writer, "\"{}\"@{}", literal.string, lang_tag)?

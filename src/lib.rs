@@ -1,4 +1,4 @@
 pub mod model;
-mod utils;
-mod writer;
-mod error;
+pub mod writer;
+pub mod error;
+pub mod vocabs;

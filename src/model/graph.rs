@@ -28,6 +28,10 @@ impl MemoryGraph {
     }
 }
 
+impl Default for MemoryGraph {
+    fn default() -> Self { MemoryGraph::new() }
+}
+
 impl Graph for MemoryGraph {
     fn prefixes(&self) -> &BTreeMap<String, Iri> { &self.prefixes }
     fn triples(&self) -> impl Iterator<Item=&Triple> {
