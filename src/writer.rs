@@ -73,11 +73,16 @@ fn write_iri<W: Write>(writer: &mut W, iri: &Iri, prefixes: &BTreeMap<String, Ir
                        -> Result<(), PenyuError> {
     let key_local =
         prefixes.iter().find_map(|(key, prefix_iri)| {
-            iri.as_str().strip_prefix(prefix_iri.as_str()).map(|local| (key, local))
+            iri.iri.strip_prefix(&prefix_iri.iri).map(|local| (key, local))
         });
     match key_local {
         None => { write!(writer, "<{}>", iri)? }
-        Some((key, local)) => { write!(writer, "{}:{}", key, local)? }
+        Some((key, local)) => {
+            write!(writer, "{}:", key)?;
+            for c in local {
+                write!(writer, "{}", c)?;
+            }
+        }
     }
     Ok(())
 }

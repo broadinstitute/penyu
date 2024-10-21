@@ -1,16 +1,9 @@
 use std::fmt::Display;
 use strey::Strey;
-use crate::utils::twine::Twine;
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq)]
 pub struct Iri {
-    iri: Strey
-}
-
-impl Iri {
-    pub(crate) fn as_str(&self) -> &str {
-        self.iri.as_str()
-    }
+    pub(crate) iri: Strey,
 }
 
 impl Display for Iri {
@@ -21,12 +14,12 @@ impl Display for Iri {
 
 impl From<String> for Iri {
     fn from(string: String) -> Self {
-        Iri { iri: Twine::from(string) }
+        Iri { iri: Strey::from(string) }
     }
 }
 
-impl From<&str> for Iri {
-    fn from(string: &str) -> Self {
-        Iri { iri: Twine::from(string) }
+impl From<&'static str> for Iri {
+    fn from(string: &'static str) -> Self {
+        Iri { iri: Strey::from(string) }
     }
 }
