@@ -35,6 +35,12 @@ impl From<Literal> for Node {
     }
 }
 
+impl From<Iri> for Node {
+    fn from(iri: Iri) -> Self {
+        Node::Entity(Entity::Iri(iri))
+    }
+}
+
 impl From<Iri> for Entity {
     fn from(iri: Iri) -> Self {
         Entity::Iri(iri)
