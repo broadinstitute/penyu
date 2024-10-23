@@ -27,6 +27,11 @@ impl Display for Iri {
     }
 }
 
+impl From<&Iri> for Iri {
+    fn from(iri: &Iri) -> Self {
+        iri.clone()
+    }
+}
 impl From<String> for Iri {
     fn from(string: String) -> Self {
         Iri { iri: Strey::from(string) }

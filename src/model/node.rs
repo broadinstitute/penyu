@@ -23,6 +23,11 @@ impl BlankNode {
     pub fn id(&self) -> &str { self.id.as_str() }
 }
 
+impl From<&Node> for Node {
+    fn from(node: &Node) -> Self {
+        node.clone()
+    }
+}
 impl From<Entity> for Node {
     fn from(entity: Entity) -> Self {
         Node::Entity(entity)
@@ -54,6 +59,12 @@ impl From<Iri> for Node {
 impl From<&Iri> for Node {
     fn from(iri: &Iri) -> Self {
         Node::Entity(Entity::Iri(iri.clone()))
+    }
+}
+
+impl From<&Entity> for Entity {
+    fn from(entity: &Entity) -> Self {
+        entity.clone()
     }
 }
 
