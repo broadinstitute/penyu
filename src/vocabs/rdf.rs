@@ -1,0 +1,23 @@
+use crate::model::iri::Iri;
+
+pub const PREFIX: &str = "rdf";
+pub const NAMESPACE: &Iri = &Iri::new_str("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+pub const TYPE: &Iri = &NAMESPACE.join_str("type");
+pub const FIRST: &Iri = &NAMESPACE.join_str("first");
+pub const REST: &Iri = &NAMESPACE.join_str("rest");
+pub const NIL: &Iri = &NAMESPACE.join_str("nil");
+pub const SUBJECT: &Iri = &NAMESPACE.join_str("subject");
+pub const PREDICATE: &Iri = &NAMESPACE.join_str("predicate");
+pub const OBJECT: &Iri = &NAMESPACE.join_str("object");
+pub const STATEMENT: &Iri = &NAMESPACE.join_str("Statement");
+pub const PROPERTY: &Iri = &NAMESPACE.join_str("Property");
+pub const XML_LITERAL: &Iri = &NAMESPACE.join_str("XMLLiteral");
+pub const LANG_STRING: &Iri = &NAMESPACE.join_str("langString");
+pub const HTML: &Iri = &NAMESPACE.join_str("HTML");
+pub const PLAIN_LITERAL: &Iri = &NAMESPACE.join_str("PlainLiteral");
+pub const DATATYPE: &Iri = &NAMESPACE.join_str("Datatype");
+pub const LIST: &Iri = &NAMESPACE.join_str("List");
+pub const BAG: &Iri = &NAMESPACE.join_str("Bag");
+pub const SEQ: &Iri = &NAMESPACE.join_str("Seq");
+pub const ALT: &Iri = &NAMESPACE.join_str("Alt");
+pub const VALUE: &Iri = &NAMESPACE.join_str("value");
