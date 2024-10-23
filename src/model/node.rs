@@ -29,9 +29,20 @@ impl From<Entity> for Node {
     }
 }
 
+impl From<&Entity> for Node {
+    fn from(entity: &Entity) -> Self {
+        Node::Entity(entity.clone())
+    }
+}
+
 impl From<Literal> for Node {
     fn from(literal: Literal) -> Self {
         Node::Literal(literal)
+    }
+}
+impl From<&Literal> for Node {
+    fn from(literal: &Literal) -> Self {
+        Node::Literal(literal.clone())
     }
 }
 
@@ -40,16 +51,31 @@ impl From<Iri> for Node {
         Node::Entity(Entity::Iri(iri))
     }
 }
+impl From<&Iri> for Node {
+    fn from(iri: &Iri) -> Self {
+        Node::Entity(Entity::Iri(iri.clone()))
+    }
+}
 
 impl From<Iri> for Entity {
     fn from(iri: Iri) -> Self {
         Entity::Iri(iri)
     }
 }
+impl From<&Iri> for Entity {
+    fn from(iri: &Iri) -> Self {
+        Entity::Iri(iri.clone())
+    }
+}
 
 impl From<BlankNode> for Entity {
     fn from(blank_node: BlankNode) -> Self {
         Entity::BlankNode(blank_node)
+    }
+}
+impl From<&BlankNode> for Entity {
+    fn from(blank_node: &BlankNode) -> Self {
+        Entity::BlankNode(blank_node.clone())
     }
 }
 
