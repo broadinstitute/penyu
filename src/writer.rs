@@ -50,7 +50,7 @@ fn write_triples<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), Pe
             }
             last_triple = triple;
         }
-        write!(writer, " .")?;
+        writeln!(writer, " .")?;
     }
     Ok(())
 }
