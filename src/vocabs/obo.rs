@@ -10,11 +10,12 @@ pub mod ns {
     pub const RO: &Iri = &NAMESPACE.join_str("RO_");
     pub const UBERON: &Iri = &NAMESPACE.join_str("UBERON_");
     pub const MONDO: &Iri = &NAMESPACE.join_str("MONDO_");
+    pub const GENO: &Iri = &NAMESPACE.join_str("GENO_");
 
 }
 
 pub enum Ontology {
-    RO, UBERON, MONDO
+    RO, UBERON, MONDO, GENO
 }
 
 impl Ontology {
@@ -23,6 +24,7 @@ impl Ontology {
             Ontology::RO => ns::RO,
             Ontology::UBERON => ns::UBERON,
             Ontology::MONDO => ns::MONDO,
+            Ontology::GENO => ns::GENO,
         }
     }
     pub fn create_iri(&self, id: u64) -> Iri {
