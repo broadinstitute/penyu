@@ -27,7 +27,7 @@ impl Ontology {
             Ontology::GENO => ns::GENO,
         }
     }
-    pub fn create_iri(&self, id: u64) -> Iri {
+    pub fn create_iri(&self, id: u32) -> Iri {
         self.namespace().join(format!("{:07}", id))
     }
 }
