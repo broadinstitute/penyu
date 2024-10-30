@@ -35,7 +35,7 @@ fn write_triples<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), Pe
                     write!(writer, ", ")?;
                     write_node(writer, &triple.object, graph.prefixes())?;
                 } else {
-                    writeln!(writer, ";\n    ")?;
+                    write!(writer, ";\n    ")?;
                     write_iri(writer, &triple.predicate, graph.prefixes())?;
                     write!(writer, " ")?;
                     write_node(writer, &triple.object, graph.prefixes())?;
