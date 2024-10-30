@@ -7,6 +7,7 @@ pub mod ns {
     use crate::model::iri::Iri;
     use crate::vocabs::obo::NAMESPACE;
 
+    pub const CHEBI: &Iri = &NAMESPACE.join_str("CHEBI_");
     pub const GENO: &Iri = &NAMESPACE.join_str("GENO_");
     pub const MONDO: &Iri = &NAMESPACE.join_str("MONDO_");
     pub const RO: &Iri = &NAMESPACE.join_str("RO_");
@@ -16,12 +17,13 @@ pub mod ns {
 }
 
 pub enum Ontology {
-    GENO, MONDO, RO, SO, UBERON
+    CHEBI, GENO, MONDO, RO, SO, UBERON
 }
 
 impl Ontology {
     pub fn namespace(&self) -> &'static Iri {
         match self {
+            Ontology::CHEBI => ns::CHEBI,
             Ontology::GENO => ns::GENO,
             Ontology::MONDO => ns::MONDO,
             Ontology::RO => ns::RO,
