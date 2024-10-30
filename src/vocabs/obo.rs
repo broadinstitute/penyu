@@ -7,24 +7,26 @@ pub mod ns {
     use crate::model::iri::Iri;
     use crate::vocabs::obo::NAMESPACE;
 
-    pub const RO: &Iri = &NAMESPACE.join_str("RO_");
-    pub const UBERON: &Iri = &NAMESPACE.join_str("UBERON_");
-    pub const MONDO: &Iri = &NAMESPACE.join_str("MONDO_");
     pub const GENO: &Iri = &NAMESPACE.join_str("GENO_");
+    pub const MONDO: &Iri = &NAMESPACE.join_str("MONDO_");
+    pub const RO: &Iri = &NAMESPACE.join_str("RO_");
+    pub const SO: &Iri = &NAMESPACE.join_str("SO_");
+    pub const UBERON: &Iri = &NAMESPACE.join_str("UBERON_");
 
 }
 
 pub enum Ontology {
-    RO, UBERON, MONDO, GENO
+    GENO, MONDO, RO, SO, UBERON
 }
 
 impl Ontology {
     pub fn namespace(&self) -> &'static Iri {
         match self {
-            Ontology::RO => ns::RO,
-            Ontology::UBERON => ns::UBERON,
-            Ontology::MONDO => ns::MONDO,
             Ontology::GENO => ns::GENO,
+            Ontology::MONDO => ns::MONDO,
+            Ontology::RO => ns::RO,
+            Ontology::SO => ns::SO,
+            Ontology::UBERON => ns::UBERON,
         }
     }
     pub fn create_iri(&self, id: u32) -> Iri {
