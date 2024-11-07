@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::Write;
+use strey::iter::Chars;
 use crate::error::PenyuError;
 use crate::model::graph::Graph;
 use crate::model::node::{BlankNode, Entity, Node};
@@ -77,15 +78,19 @@ fn write_iri<W: Write>(writer: &mut W, iri: &Iri, prefixes: &BTreeMap<String, Ir
             iri.iri.strip_prefix(&prefix_iri.iri).map(|local| (key, local))
         });
     match key_local {
-        None => { write!(writer, "<{}>", iri)? }
-        Some((key, local)) => {
+        Some((key, local)) if is_valid_local(&local) => {
             write!(writer, "{}:", key)?;
             for c in local {
                 write!(writer, "{}", c)?;
             }
         }
+        _ => { write!(writer, "<{}>", iri)? }
     }
     Ok(())
+}
+
+fn is_valid_local(local: &Chars) -> bool {
+    local.clone().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.' || c == ':')
 }
 
 fn write_blank_node<W: Write>(writer: &mut W, blank_node: &BlankNode) -> Result<(), PenyuError> {
