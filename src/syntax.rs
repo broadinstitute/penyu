@@ -21,15 +21,9 @@ pub fn is_valid_local(local: &Chars) -> bool {
 
 fn is_escape_sequence(chars: &mut Chars) -> bool {
     match chars.next() {
-        Some('\\') => {
-            match chars.next() {
-                Some('u') => is_hex_num(chars, 4),
-                Some('U') => is_hex_num(chars, 8),
-                Some(c) => is_single_char_escape(c),
-                _ => false
-            }
-        }
-        Some('%') => is_hex_num(chars, 2),
+        Some('u') => is_hex_num(chars, 4),
+        Some('U') => is_hex_num(chars, 8),
+        Some(c) => is_single_char_escape(c),
         _ => false
     }
 }
