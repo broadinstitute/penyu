@@ -3,6 +3,14 @@ use crate::model::iri::Iri;
 pub const PREFIX: &str = "obo";
 pub const NAMESPACE: &Iri = &Iri::new_str("http://purl.obolibrary.org/obo/");
 
+pub mod prefixes {
+    pub const CHEBI: &str = "chebi";
+    pub const GENO: &str = "geno";
+    pub const MONDO: &str = "mondo";
+    pub const RO: &str = "ro";
+    pub const SO: &str = "so";
+    pub const UBERON: &str = "uberon";
+}
 pub mod ns {
     use crate::model::iri::Iri;
     use crate::vocabs::obo::NAMESPACE;

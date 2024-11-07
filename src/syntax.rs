@@ -53,5 +53,5 @@ fn is_local_name_first_char(c: char) -> bool {
 }
 
 fn is_local_name_later_char(c: char) -> bool {
-    c.is_ascii_alphabetic() || c == '_' || c == '-' || c == '.'
+    c.is_alphanumeric() || c == '_' || c == '-' || c == '.'
 }
