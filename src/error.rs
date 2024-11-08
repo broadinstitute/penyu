@@ -41,3 +41,9 @@ impl From<std::io::Error> for PenyuError {
         PenyuError::new("I/O error".to_string(), Some(Box::new(error)))
     }
 }
+
+impl From<xml::reader::Error> for PenyuError {
+    fn from(xml_reader_error: xml::reader::Error) -> Self {
+        PenyuError::new("XML reader error".to_string(), Some(Box::new(xml_reader_error)))
+    }
+}

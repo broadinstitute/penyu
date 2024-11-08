@@ -12,3 +12,4 @@ license = "BSD-3-Clause"
 
 [dependencies]
 strey = { git = "https://github.com/broadinstitute/strey.git", rev = "9e9734d2cc08c5aad64ec4b96ae92cde178e79a4" }
+xml-rs = "0.8.23"
