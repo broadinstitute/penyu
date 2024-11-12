@@ -14,9 +14,9 @@ pub fn read<R: Read>(read: &mut R) -> Result<MemoryGraph, PenyuError> {
             XmlEvent::StartElement { .. } => {}
             XmlEvent::EndElement { .. } => {}
             XmlEvent::CData(_) => {}
-            XmlEvent::Comment(_) => {}
+            XmlEvent::Comment(_) => { /* ignore */ }
             XmlEvent::Characters(_) => {}
-            XmlEvent::Whitespace(_) => {}
+            XmlEvent::Whitespace(_) => { /* ignore */ }
             XmlEvent::EndDocument => {}
         }
     }
