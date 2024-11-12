@@ -1,23 +1,23 @@
-use crate::model::triple::Triple;
-use std::collections::{BTreeMap, BTreeSet};
 use crate::model::iri::Iri;
 use crate::model::node::{Entity, Node};
+use crate::model::triple::Triple;
+use std::collections::BTreeMap;
 
 pub trait Graph {
     fn prefixes(&self) -> &BTreeMap<String, Iri>;
-    fn triples(&self) -> impl Iterator<Item=&Triple>;
+    fn triples(&self) -> impl Iterator<Item=Triple>;
 }
 
 pub struct MemoryGraph {
     prefixes: BTreeMap<String, Iri>,
-    triples: BTreeSet<Triple>,
+    triples: BTreeMap<Entity, BTreeMap<Iri, Node>>,
 }
 
 impl MemoryGraph {
     pub fn new() -> MemoryGraph {
         MemoryGraph {
             prefixes: BTreeMap::new(),
-            triples: BTreeSet::new(),
+            triples: BTreeMap::new(),
         }
     }
     pub fn add_prefix(&mut self, prefix: String, iri: Iri) {
@@ -25,7 +25,7 @@ impl MemoryGraph {
     }
 
     pub fn add_triple(&mut self, triple: Triple) {
-        self.triples.insert(triple);
+        self.add(triple.subject, triple.predicate, triple.object);
     }
     pub fn add<S, P, O>(&mut self, subject: S, predicate: P, object: O)
     where
@@ -33,7 +33,10 @@ impl MemoryGraph {
         P: Into<Iri>,
         O: Into<Node>,
     {
-        self.add_triple(Triple::create(subject, predicate, object));
+        let subject = subject.into();
+        let predicate = predicate.into();
+        let object = object.into();
+        self.triples.entry(subject).or_default().insert(predicate, object);
     }
 }
 
@@ -43,7 +46,11 @@ impl Default for MemoryGraph {
 
 impl Graph for MemoryGraph {
     fn prefixes(&self) -> &BTreeMap<String, Iri> { &self.prefixes }
-    fn triples(&self) -> impl Iterator<Item=&Triple> {
-        self.triples.iter()
+    fn triples(&self) -> impl Iterator<Item=Triple> {
+        self.triples.iter().flat_map(|(subject, predicates)| {
+            predicates.iter().map(move |(predicate, object)| {
+                Triple::create(subject.clone(), predicate.clone(), object.clone())
+            })
+        })
     }
 }
