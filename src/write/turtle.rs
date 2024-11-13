@@ -8,8 +8,15 @@ use crate::model::literal::{Literal, LiteralTag};
 use crate::{syntax, vocabs};
 
 pub fn write<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), PenyuError> {
+    write_default_ns(writer, graph)?;
     write_prefixes(writer, graph)?;
     write_triples(writer, graph)?;
+    Ok(())
+}
+fn write_default_ns<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), PenyuError> {
+    if let Some(default_ns) = graph.default_ns() {
+        writeln!(writer, "BASE <{}> .", default_ns)?;
+    }
     Ok(())
 }
 
