@@ -19,6 +19,9 @@ impl Iri {
     pub fn join(&'static self, local: String) -> Iri {
         Iri::new(self.iri.join(local))
     }
+    pub fn same_as<B: AsRef<[u8]>>(&self, bytes: B) -> bool {
+        self.iri.bytes().eq(bytes.as_ref().iter().copied())
+    }
 }
 
 impl Display for Iri {

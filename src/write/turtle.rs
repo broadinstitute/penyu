@@ -14,7 +14,7 @@ pub fn write<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), PenyuE
     Ok(())
 }
 fn write_default_ns<W: Write, G: Graph>(writer: &mut W, graph: &G) -> Result<(), PenyuError> {
-    if let Some(default_ns) = graph.default_ns() {
+    if let Some(default_ns) = graph.base_ns() {
         writeln!(writer, "BASE <{}> .", default_ns)?;
     }
     Ok(())
