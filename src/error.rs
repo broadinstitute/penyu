@@ -36,6 +36,12 @@ impl Error for PenyuError {
     }
 }
 
+impl From<String> for PenyuError {
+    fn from(message: String) -> Self {
+        PenyuError::new(message, None)
+    }
+}
+
 impl From<std::io::Error> for PenyuError {
     fn from(error: std::io::Error) -> Self {
         PenyuError::new("I/O error".to_string(), Some(Box::new(error)))

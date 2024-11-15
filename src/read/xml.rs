@@ -1,17 +1,18 @@
 use crate::error::PenyuError;
-use crate::model::graph::MemoryGraph;
+use crate::model::graph::{Graph, MemoryGraph};
 use crate::model::iri::Iri;
+use crate::model::node::Node;
 use crate::vocabs;
 use std::io::Read;
 use xml::attribute::OwnedAttribute;
 use xml::name::OwnedName;
+use xml::namespace::Namespace;
 use xml::reader::XmlEvent;
-use crate::model::node::Node;
 
 enum State {
     PreStart,
     Started,
-    Rdf(Stack)
+    Rdf(Stack),
 }
 
 
@@ -36,10 +37,10 @@ pub fn read<R: Read>(read: &mut R) -> Result<MemoryGraph, PenyuError> {
             } => {
                 match state {
                     State::Started => {
-                        state = parse_rdf_start(&mut graph, &name, &attributes)?;
+                        state = parse_rdf_start(&mut graph, &name, &attributes, &namespace)?;
                     }
                     State::Rdf(ref mut stack) => {
-                        parse_rdf(stack, name);
+                        parse_rdf(stack, name, &attributes, &mut graph)?;
                     }
                     _ => {
                         Err(PenyuError::new("Unexpected start element".to_string(), None))?;
@@ -57,23 +58,92 @@ pub fn read<R: Read>(read: &mut R) -> Result<MemoryGraph, PenyuError> {
     Ok(graph)
 }
 
-fn parse_rdf(stack: &mut Stack, name: OwnedName) {
+fn parse_rdf(stack: &mut Stack, name: OwnedName, attributes: &[OwnedAttribute],
+             graph: &mut MemoryGraph) -> Result<(), PenyuError>{
     match stack {
         Stack::S(_) => {
             println!("Element: {:?}", name);
             todo!("Parse next predicate")
         }
         Stack::P(_) => {
+            let class = iri_from_tag(&name, graph);
+            for attribute in attributes {
+                if attribute.name.local_name == "about" && has_ns(&attribute.name, vocabs::rdf::NAMESPACE) {
+                } else {
+                    Err(PenyuError::from(
+                        format!("Unexpected attribute: {:?} of tag {:?}", attribute, name)
+                    ))?;
+                }
+            }
             println!("Element: {:?}", name);
             todo!("Parse next object")
         }
     }
 }
 
-fn parse_rdf_start(mut graph: &mut MemoryGraph, name: &OwnedName, attributes: &Vec<OwnedAttribute>)
+fn iri_from_tag(name: &OwnedName, graph: &mut MemoryGraph) -> Result<Iri, PenyuError> {
+    match &name.namespace {
+        None => {
+            Err(PenyuError::from(format!("No namespace for tag: {:?}", name)))
+        }
+        Some(ns) => {
+            let empty_prefix = "".to_string();
+            let prefix = name.prefix.as_ref().unwrap_or(&empty_prefix);
+            let iri_get = graph.prefixes().get(prefix);
+            let ns_iri =
+                match iri_get {
+                    None => {
+                        let ns_iri = Iri::from(ns.clone());
+                        graph.add_prefix(prefix.clone(), ns_iri.clone());
+                        ns_iri
+                    }
+                    Some(ns_iri) => {
+                        if !ns_iri.same_as(ns) {
+                            Err(PenyuError::from(
+                                format!("Prefix {} used for {}, but already bound to {}",
+                                        prefix, ns, ns_iri)
+                            ))?;
+                        }
+                        ns_iri.clone()
+                    }
+                };
+            Ok(ns_iri.append(name.local_name.clone()))
+        }
+    }
+}
+
+fn iri_from_about(tag: &OwnedName, attributes: &[OwnedAttribute], graph: &MemoryGraph)
+                  -> Result<Iri, PenyuError> {
+    let mut about: Option<String> = None;
+    for attribute in attributes {
+        if attribute.name.local_name == "about" && has_ns(&attribute.name, vocabs::rdf::NAMESPACE) {
+            about = Some(attribute.value.clone());
+        } else {
+            Err(PenyuError::from(
+                format!("Unexpected attribute: {:?} of tag {:?}", attribute, tag)
+            ))?;
+        }
+    }
+    match about {
+        Some(about) => {
+            Ok(Iri::from(about))
+        }
+        None => {
+            Err(PenyuError::from(format!("Tag {:?} has no rdf:about attribute", tag)))
+        }
+    }
+}
+
+fn parse_rdf_start(graph: &mut MemoryGraph, name: &OwnedName, attributes: &[OwnedAttribute],
+                   namespace: &Namespace)
                    -> Result<State, PenyuError> {
-    if tag_is_rdf_rdf(&name) {
-        parse_attributes_top_level(&mut graph, &attributes)?;
+    if tag_is_rdf_rdf(name) {
+        for mapping in namespace.0.iter() {
+            let prefix = mapping.0.clone();
+            let ns_iri = Iri::from(mapping.1.clone());
+            graph.add_prefix(prefix, ns_iri);
+        }
+        parse_attributes_top_level(graph, attributes)?;
         Ok(State::Rdf(Stack::new()))
     } else {
         Err(PenyuError::new("Unexpected start element".to_string(), None))?
@@ -82,7 +152,7 @@ fn parse_rdf_start(mut graph: &mut MemoryGraph, name: &OwnedName, attributes: &V
 
 struct StackS {
     stack_p: Option<Box<StackP>>,
-    subject: Node
+    subject: Node,
 }
 
 struct StackP {
@@ -99,7 +169,7 @@ impl StackS {
     fn new(subject: Node) -> StackS {
         StackS {
             stack_p: None,
-            subject
+            subject,
         }
     }
 }
@@ -108,7 +178,7 @@ impl StackP {
     fn new(stack_s: StackS, predicate: Iri) -> StackP {
         StackP {
             stack_s,
-            predicate
+            predicate,
         }
     }
 }
@@ -133,7 +203,7 @@ impl Stack {
 }
 
 fn parse_attributes_top_level(graph: &mut MemoryGraph, attributes: &[OwnedAttribute])
-    -> Result<(), PenyuError> {
+                              -> Result<(), PenyuError> {
     for attribute in attributes {
         if attribute.name.local_name == "base" && has_ns(&attribute.name, vocabs::xml::NAMESPACE) {
             let base = Iri::from(attribute.value.clone());

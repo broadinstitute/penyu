@@ -22,6 +22,9 @@ impl Iri {
     pub fn same_as<B: AsRef<[u8]>>(&self, bytes: B) -> bool {
         self.iri.bytes().eq(bytes.as_ref().iter().copied())
     }
+    pub fn append(&self, local: String) -> Iri {
+        Iri::new(self.iri.append(local))
+    }
 }
 
 impl Display for Iri {
