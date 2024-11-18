@@ -1,7 +1,7 @@
 use crate::error::PenyuError;
 use crate::model::graph::{Graph, MemoryGraph};
 use crate::model::iri::Iri;
-use crate::model::node::Node;
+use crate::model::node::{Entity, Node};
 use crate::vocabs;
 use std::io::Read;
 use xml::attribute::OwnedAttribute;
@@ -13,6 +13,8 @@ enum State {
     PreStart,
     Started,
     Rdf(Stack),
+    PostRdf,
+    PostEnd
 }
 
 
@@ -22,55 +24,79 @@ pub fn read<R: Read>(read: &mut R) -> Result<MemoryGraph, PenyuError> {
     let mut state = State::PreStart;
     for event in parser {
         let event = event?;
-        match event {
-            XmlEvent::StartDocument { .. } => {
-                match state {
-                    State::PreStart => { state = State::Started; }
-                    _ => {
-                        Err(PenyuError::new("Unexpected start document".to_string(), None))?;
+        state =
+            match event {
+                XmlEvent::StartDocument { .. } => {
+                    match state {
+                        State::PreStart => { State::Started }
+                        _ => {
+                            Err(PenyuError::new("Unexpected start document".to_string(), None))?
+                        }
                     }
                 }
-            }
-            XmlEvent::ProcessingInstruction { .. } => { todo!() }
-            XmlEvent::StartElement {
-                name, attributes, namespace
-            } => {
-                match state {
-                    State::Started => {
-                        state = parse_rdf_start(&mut graph, &name, &attributes, &namespace)?;
-                    }
-                    State::Rdf(ref mut stack) => {
-                        parse_rdf(stack, name, &attributes, &mut graph)?;
-                    }
-                    _ => {
-                        Err(PenyuError::new("Unexpected start element".to_string(), None))?;
+                XmlEvent::ProcessingInstruction { .. } => { todo!() }
+                XmlEvent::StartElement {
+                    name, attributes, namespace
+                } => {
+                    match state {
+                        State::Started => {
+                            parse_rdf_start(&mut graph, &name, &attributes, &namespace)?
+                        }
+                        State::Rdf(stack) => {
+                            let stack = parse_rdf(stack, name, &attributes, &mut graph)?;
+                            State::Rdf(stack)
+                        }
+                        _ => {
+                            Err(PenyuError::new("Unexpected start element".to_string(), None))?
+                        }
                     }
                 }
+                XmlEvent::EndElement { name } => {
+                    match state {
+                        State::Rdf(stack) => {
+                            if stack.is_empty() {
+                                if tag_is_rdf_rdf(&name) {
+                                    State::PostRdf
+                                } else {
+                                    Err(PenyuError::new("Unexpected end element".to_string(), None))?
+                                }
+                            } else {
+                                let stack = stack.pop()?;
+                                State::Rdf(stack)
+                            }
+                        }
+                        _ => {
+                            Err(PenyuError::new("Unexpected end element".to_string(), None))?
+                        }
+                    }
+                }
+                XmlEvent::CData(_) => { todo!() }
+                XmlEvent::Comment(_) => { state }
+                XmlEvent::Characters(_) => { todo!() }
+                XmlEvent::Whitespace(_) => { state }
+                XmlEvent::EndDocument => { todo!() }
             }
-            XmlEvent::EndElement { .. } => { todo!() }
-            XmlEvent::CData(_) => { todo!() }
-            XmlEvent::Comment(_) => { /* Do nothing */ }
-            XmlEvent::Characters(_) => { todo!() }
-            XmlEvent::Whitespace(_) => { /* Do nothing */ }
-            XmlEvent::EndDocument => { todo!() }
-        }
     }
     Ok(graph)
 }
 
-fn parse_rdf(stack: &mut Stack, name: OwnedName, attributes: &[OwnedAttribute],
-             graph: &mut MemoryGraph) -> Result<(), PenyuError>{
+fn parse_rdf(stack: Stack, name: OwnedName, attributes: &[OwnedAttribute],
+             graph: &mut MemoryGraph) -> Result<Stack, PenyuError> {
     match stack {
-        Stack::S(_) => {
-            println!("Element: {:?}", name);
-            todo!("Parse next predicate")
+        Stack::S(stack_s) => {
+            let predicate = iri_from_tag(&name, graph)?;
+            Ok(Stack::P(Some(Box::new(StackP::new(stack_s, predicate)))))
         }
         Stack::P(stack_p) => {
             let class = iri_from_tag(&name, graph)?;
             let id = iri_from_about(&name, attributes, graph)?;
             graph.add(&id, vocabs::rdf::TYPE, class);
-            println!("Element: {:?}", name);
-            todo!("Parse next object")
+            if let Some(stack_p) = &stack_p {
+                let object = &stack_p.stack_s.subject;
+                let predicate = &stack_p.predicate;
+                graph.add(&id, predicate, object);
+            }
+            Ok(Stack::S(StackS::new(stack_p, Node::from(Entity::from(id)))))
         }
     }
 }
@@ -164,12 +190,7 @@ enum Stack {
 }
 
 impl StackS {
-    fn new(subject: Node) -> StackS {
-        StackS {
-            stack_p: None,
-            subject,
-        }
-    }
+    fn new(stack_p: Option<Box<StackP>>, subject: Node) -> StackS { StackS { stack_p, subject, } }
 }
 
 impl StackP {
@@ -184,6 +205,13 @@ impl StackP {
 impl Stack {
     fn new() -> Stack {
         Stack::P(None)
+    }
+
+    fn is_empty(&self) -> bool {
+        match self {
+            Stack::S(_) => { false }
+            Stack::P(stack_p) => { stack_p.is_none() }
+        }
     }
     fn pop(self) -> Result<Self, PenyuError> {
         match self {
