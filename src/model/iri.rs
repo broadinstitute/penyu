@@ -25,6 +25,9 @@ impl Iri {
     pub fn append(&self, local: String) -> Iri {
         Iri::new(self.iri.append(local))
     }
+    pub fn maybe_use_as_prefix_for(&self, iri: Iri) -> Iri {
+        Iri::new(self.iri.maybe_use_as_prefix_for(iri.iri))
+    }
 }
 
 impl Display for Iri {

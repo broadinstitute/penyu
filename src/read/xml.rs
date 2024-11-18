@@ -65,16 +65,10 @@ fn parse_rdf(stack: &mut Stack, name: OwnedName, attributes: &[OwnedAttribute],
             println!("Element: {:?}", name);
             todo!("Parse next predicate")
         }
-        Stack::P(_) => {
-            let class = iri_from_tag(&name, graph);
-            for attribute in attributes {
-                if attribute.name.local_name == "about" && has_ns(&attribute.name, vocabs::rdf::NAMESPACE) {
-                } else {
-                    Err(PenyuError::from(
-                        format!("Unexpected attribute: {:?} of tag {:?}", attribute, name)
-                    ))?;
-                }
-            }
+        Stack::P(stack_p) => {
+            let class = iri_from_tag(&name, graph)?;
+            let id = iri_from_about(&name, attributes, graph)?;
+            graph.add(&id, vocabs::rdf::TYPE, class);
             println!("Element: {:?}", name);
             todo!("Parse next object")
         }
@@ -126,7 +120,11 @@ fn iri_from_about(tag: &OwnedName, attributes: &[OwnedAttribute], graph: &Memory
     }
     match about {
         Some(about) => {
-            Ok(Iri::from(about))
+            let mut about = Iri::from(about);
+            for prefix in graph.prefixes().values() {
+                about = prefix.maybe_use_as_prefix_for(about);
+            }
+            Ok(about)
         }
         None => {
             Err(PenyuError::from(format!("Tag {:?} has no rdf:about attribute", tag)))
