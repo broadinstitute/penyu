@@ -9,8 +9,8 @@ pub enum LiteralTag {
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq)]
 pub struct Literal {
-    pub(crate) string: String,
-    pub(crate) literal_tag: LiteralTag,
+    pub string: String,
+    pub literal_tag: LiteralTag,
 }
 
 impl Literal {
