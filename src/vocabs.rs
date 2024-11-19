@@ -3,3 +3,4 @@ pub mod obo;
 pub mod rdf;
 pub mod uniprot;
 pub mod xml;
+pub mod rdfs;
