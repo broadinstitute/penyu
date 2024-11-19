@@ -1,6 +1,6 @@
 # penyu
 
-A Rust library to write some RDF as Turtle.
+A Rust library to read some RDF/XML and to write some RDF as Turtle.
 
 Yup, that is it. For now, at least.
 

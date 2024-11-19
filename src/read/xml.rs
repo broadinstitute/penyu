@@ -1,8 +1,10 @@
 use crate::error::PenyuError;
 use crate::model::graph::{Graph, MemoryGraph};
 use crate::model::iri::Iri;
-use crate::model::node::{Entity, Node};
+use crate::model::literal::{Literal, LiteralTag};
+use crate::model::node::{BlankNode, Entity, Node};
 use crate::vocabs;
+use crate::vocabs::rdf;
 use std::io::Read;
 use xml::attribute::OwnedAttribute;
 use xml::name::OwnedName;
@@ -12,9 +14,9 @@ use xml::reader::XmlEvent;
 enum State {
     PreStart,
     Started,
-    Rdf(Stack),
+    Rdf { stack: Stack, n_b_nodes: usize },
     PostRdf,
-    PostEnd
+    PostEnd,
 }
 
 
@@ -30,11 +32,11 @@ pub fn read<R: Read>(read: &mut R) -> Result<MemoryGraph, PenyuError> {
                     match state {
                         State::PreStart => { State::Started }
                         _ => {
-                            Err(PenyuError::new("Unexpected start document".to_string(), None))?
+                            Err(PenyuError::from("Unexpected document start"))?
                         }
                     }
                 }
-                XmlEvent::ProcessingInstruction { .. } => { todo!() }
+                XmlEvent::ProcessingInstruction { .. } => { state }
                 XmlEvent::StartElement {
                     name, attributes, namespace
                 } => {
@@ -42,61 +44,137 @@ pub fn read<R: Read>(read: &mut R) -> Result<MemoryGraph, PenyuError> {
                         State::Started => {
                             parse_rdf_start(&mut graph, &name, &attributes, &namespace)?
                         }
-                        State::Rdf(stack) => {
-                            let stack = parse_rdf(stack, name, &attributes, &mut graph)?;
-                            State::Rdf(stack)
+                        State::Rdf { stack, mut n_b_nodes } => {
+                            let stack =
+                                parse_rdf(stack, name, &attributes, &mut graph, &mut n_b_nodes)?;
+                            State::Rdf { stack, n_b_nodes }
                         }
                         _ => {
-                            Err(PenyuError::new("Unexpected start element".to_string(), None))?
+                            Err(PenyuError::from(
+                                format!("Unexpected start tag {:?}", name)
+                            ))?
                         }
                     }
                 }
                 XmlEvent::EndElement { name } => {
                     match state {
-                        State::Rdf(stack) => {
+                        State::Rdf { stack, n_b_nodes } => {
                             if stack.is_empty() {
                                 if tag_is_rdf_rdf(&name) {
                                     State::PostRdf
                                 } else {
-                                    Err(PenyuError::new("Unexpected end element".to_string(), None))?
+                                    err_unexpected_end_tag(&name)?
                                 }
                             } else {
                                 let stack = stack.pop()?;
-                                State::Rdf(stack)
+                                State::Rdf { stack, n_b_nodes }
                             }
                         }
                         _ => {
-                            Err(PenyuError::new("Unexpected end element".to_string(), None))?
+                            err_unexpected_end_tag(&name)?
                         }
                     }
                 }
-                XmlEvent::CData(_) => { todo!() }
+                XmlEvent::CData(string) => {
+                    handle_characters(&mut graph, state, string)?
+                }
                 XmlEvent::Comment(_) => { state }
-                XmlEvent::Characters(_) => { todo!() }
+                XmlEvent::Characters(string) => {
+                    handle_characters(&mut graph, state, string)?
+                }
                 XmlEvent::Whitespace(_) => { state }
-                XmlEvent::EndDocument => { todo!() }
+                XmlEvent::EndDocument => {
+                    if let State::PostRdf = state {
+                        State::PostEnd
+                    } else {
+                        Err(PenyuError::from("Unexpected end of document"))?
+                    }
+                }
             }
     }
     Ok(graph)
 }
 
+fn handle_characters(graph: &mut MemoryGraph, state: State, string: String)
+    -> Result<State, PenyuError> {
+    Ok(match state {
+        State::Rdf { stack: Stack::P(Some(stack_p)), n_b_nodes } => {
+            let StackP {
+                stack_s, predicate, literal_tag
+            } = *stack_p;
+            let literal_tag =
+                literal_tag.unwrap_or_else(||
+                    LiteralTag::Type(vocabs::xsd::STRING.clone())
+                );
+            let literal = Literal::new(string, literal_tag);
+            graph.add(&stack_s.subject, &predicate, Node::from(literal));
+            let literal_tag: Option<LiteralTag> = None;
+            let stack_p = StackP::new(stack_s, predicate, literal_tag);
+            State::Rdf { stack: Stack::P(Some(Box::new(stack_p))), n_b_nodes }
+        }
+        _ => {
+            Err(PenyuError::from(
+                format!("Unexpected characters {}", string)
+            ))?
+        }
+    })
+}
+
+fn err_unexpected_end_tag(name: &OwnedName) -> Result<State, PenyuError> {
+    Err(PenyuError::from(format!("Unexpected end tag {:?}", name)))
+}
+
 fn parse_rdf(stack: Stack, name: OwnedName, attributes: &[OwnedAttribute],
-             graph: &mut MemoryGraph) -> Result<Stack, PenyuError> {
+             graph: &mut MemoryGraph, n_b_nodes: &mut usize) -> Result<Stack, PenyuError> {
     match stack {
         Stack::S(stack_s) => {
             let predicate = iri_from_tag(&name, graph)?;
-            Ok(Stack::P(Some(Box::new(StackP::new(stack_s, predicate)))))
+            let object =
+                iri_from_attribute(attributes, "resource", rdf::NAMESPACE, graph);
+            let literal_tag: Option<LiteralTag> =
+                if let Some(iri) = object {
+                    graph.add(&stack_s.subject, &predicate, Node::from(Entity::from(iri)));
+                    None
+                } else {
+                    let lang_tag =
+                        string_from_attribute(attributes, "lang", rdf::NAMESPACE);
+                    let datatype =
+                        iri_from_attribute(attributes, "datatype", rdf::NAMESPACE,
+                                           graph);
+                    match (lang_tag, datatype) {
+                        (Some(lang), None) => { Some(LiteralTag::LangTag(lang)) }
+                        (None, Some(datatype)) => { Some(LiteralTag::Type(datatype)) }
+                        (None, None) => { None }
+                        (Some(_), Some(_)) => {
+                            Err(PenyuError::from(
+                                format!("Tag {:?} has both lang and datatype attributes",
+                                        name)
+                            ))?
+                        }
+                    }
+                };
+            Ok(Stack::P(Some(Box::new(StackP::new(stack_s, predicate, literal_tag)))))
         }
         Stack::P(stack_p) => {
             let class = iri_from_tag(&name, graph)?;
-            let id = iri_from_about(&name, attributes, graph)?;
-            graph.add(&id, vocabs::rdf::TYPE, class);
+            let id =
+                iri_from_attribute(attributes, "about", rdf::NAMESPACE, graph);
+            let entity =
+                match id {
+                    Some(iri) => { Entity::from(iri) }
+                    None => {
+                        let b_node_id = format!("node{}", n_b_nodes);
+                        *n_b_nodes += 1;
+                        Entity::BlankNode(BlankNode::from(b_node_id))
+                    }
+                };
+            graph.add(&entity, rdf::TYPE, class);
             if let Some(stack_p) = &stack_p {
                 let object = &stack_p.stack_s.subject;
                 let predicate = &stack_p.predicate;
-                graph.add(&id, predicate, object);
+                graph.add(&entity, predicate, object);
             }
-            Ok(Stack::S(StackS::new(stack_p, Node::from(Entity::from(id)))))
+            Ok(Stack::S(StackS::new(stack_p, entity)))
         }
     }
 }
@@ -132,30 +210,31 @@ fn iri_from_tag(name: &OwnedName, graph: &mut MemoryGraph) -> Result<Iri, PenyuE
     }
 }
 
-fn iri_from_about(tag: &OwnedName, attributes: &[OwnedAttribute], graph: &MemoryGraph)
-                  -> Result<Iri, PenyuError> {
-    let mut about: Option<String> = None;
+fn iri_from_attribute(attributes: &[OwnedAttribute], attribute_name: &str, attribute_ns: &Iri,
+                      graph: &MemoryGraph)
+                      -> Option<Iri> {
+    let iri: Option<Iri> =
+        string_from_attribute(attributes, attribute_name, attribute_ns)
+            .map(Iri::from)
+            .map(|mut iri| {
+                for prefix in graph.prefixes().values() {
+                    iri = prefix.maybe_use_as_prefix_for(iri);
+                }
+                iri
+            });
+    iri
+}
+
+fn string_from_attribute(attributes: &[OwnedAttribute], attribute_name: &str, attribute_ns: &Iri)
+                         -> Option<String> {
+    let mut value: Option<String> = None;
     for attribute in attributes {
-        if attribute.name.local_name == "about" && has_ns(&attribute.name, vocabs::rdf::NAMESPACE) {
-            about = Some(attribute.value.clone());
-        } else {
-            Err(PenyuError::from(
-                format!("Unexpected attribute: {:?} of tag {:?}", attribute, tag)
-            ))?;
+        if attribute.name.local_name == attribute_name
+            && has_ns(&attribute.name, attribute_ns) {
+            value = Some(attribute.value.clone());
         }
     }
-    match about {
-        Some(about) => {
-            let mut about = Iri::from(about);
-            for prefix in graph.prefixes().values() {
-                about = prefix.maybe_use_as_prefix_for(about);
-            }
-            Ok(about)
-        }
-        None => {
-            Err(PenyuError::from(format!("Tag {:?} has no rdf:about attribute", tag)))
-        }
-    }
+    value
 }
 
 fn parse_rdf_start(graph: &mut MemoryGraph, name: &OwnedName, attributes: &[OwnedAttribute],
@@ -168,7 +247,7 @@ fn parse_rdf_start(graph: &mut MemoryGraph, name: &OwnedName, attributes: &[Owne
             graph.add_prefix(prefix, ns_iri);
         }
         parse_attributes_top_level(graph, attributes)?;
-        Ok(State::Rdf(Stack::new()))
+        Ok(State::Rdf { stack: Stack::new(), n_b_nodes: 0 })
     } else {
         Err(PenyuError::new("Unexpected start element".to_string(), None))?
     }
@@ -176,12 +255,13 @@ fn parse_rdf_start(graph: &mut MemoryGraph, name: &OwnedName, attributes: &[Owne
 
 struct StackS {
     stack_p: Option<Box<StackP>>,
-    subject: Node,
+    subject: Entity,
 }
 
 struct StackP {
     stack_s: StackS,
     predicate: Iri,
+    literal_tag: Option<LiteralTag>,
 }
 
 enum Stack {
@@ -190,15 +270,12 @@ enum Stack {
 }
 
 impl StackS {
-    fn new(stack_p: Option<Box<StackP>>, subject: Node) -> StackS { StackS { stack_p, subject, } }
+    fn new(stack_p: Option<Box<StackP>>, subject: Entity) -> StackS { StackS { stack_p, subject } }
 }
 
 impl StackP {
-    fn new(stack_s: StackS, predicate: Iri) -> StackP {
-        StackP {
-            stack_s,
-            predicate,
-        }
+    fn new(stack_s: StackS, predicate: Iri, literal_tag: Option<LiteralTag>) -> StackP {
+        StackP { stack_s, predicate, literal_tag }
     }
 }
 
@@ -235,8 +312,7 @@ fn parse_attributes_top_level(graph: &mut MemoryGraph, attributes: &[OwnedAttrib
             let base = Iri::from(attribute.value.clone());
             graph.set_base_ns(base);
         } else {
-            println!("Attribute: {:?}", attribute);
-            todo!("Read attributes");
+            Err(PenyuError::from(format!("Unexpected attribute {:?}", attribute)))?
         }
     }
     Ok(())
@@ -269,25 +345,25 @@ mod tests {
     #[test]
     fn read_uberon() {
         let graph = read_ontology("uberon.owl");
-        assert!(graph.prefixes().len() > 10);
-        assert!(graph.len() > 100);
+        assert_eq!(graph.prefixes().len(), 32);
+        assert_eq!(graph.len(), 942159);
     }
     #[test]
     fn read_efo() {
         let graph = read_ontology("efo.owl");
-        assert!(graph.prefixes().len() > 10);
-        assert!(graph.len() > 100);
+        assert_eq!(graph.prefixes().len(), 27);
+        assert_eq!(graph.len(), 2076147);
     }
     #[test]
     fn read_clo() {
         let graph = read_ontology("clo.owl");
-        assert!(graph.prefixes().len() > 10);
-        assert!(graph.len() > 100);
+        assert_eq!(graph.prefixes().len(), 28);
+        assert_eq!(graph.len(), 459084);
     }
     #[test]
     fn read_mondo() {
         let graph = read_ontology("mondo.owl");
-        assert!(graph.prefixes().len() > 10);
-        assert!(graph.len() > 100);
+        assert_eq!(graph.prefixes().len(), 18);
+        assert_eq!(graph.len(), 2305807);
     }
 }

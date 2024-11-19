@@ -35,7 +35,11 @@ impl Error for PenyuError {
         self.source.as_ref().map(|e| e.as_ref())
     }
 }
-
+impl From<&str> for PenyuError {
+    fn from(message: &str) -> Self {
+        PenyuError::new(message.to_string(), None)
+    }
+}
 impl From<String> for PenyuError {
     fn from(message: String) -> Self {
         PenyuError::new(message, None)

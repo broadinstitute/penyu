@@ -13,6 +13,12 @@ pub struct Literal {
     pub(crate) literal_tag: LiteralTag,
 }
 
+impl Literal {
+    pub fn new(string: String, literal_tag: LiteralTag) -> Literal {
+        Literal { string, literal_tag }
+    }
+}
+
 impl From<String> for Literal {
     fn from(string: String) -> Self {
         Literal { string, literal_tag: LiteralTag::Type(vocabs::xsd::STRING.clone()) }
