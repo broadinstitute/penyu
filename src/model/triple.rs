@@ -18,6 +18,9 @@ impl Triple {
         P: Into<Iri>,
         O: Into<Node>,
     {
-        Triple::new(subject.into(), predicate.into(),object.into())
+        Triple::new(subject.into(), predicate.into(), object.into())
     }
+    pub fn subject(&self) -> &Entity { &self.subject }
+    pub fn predicate(&self) -> &Iri { &self.predicate }
+    pub fn object(&self) -> &Node { &self.object }
 }
