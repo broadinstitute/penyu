@@ -21,7 +21,6 @@ pub mod ns {
     pub const RO: &Iri = &NAMESPACE.join_str("RO_");
     pub const SO: &Iri = &NAMESPACE.join_str("SO_");
     pub const UBERON: &Iri = &NAMESPACE.join_str("UBERON_");
-
 }
 
 pub enum Ontology {
