@@ -6,3 +6,4 @@ pub mod xml;
 pub mod rdfs;
 pub mod obo_in_owl;
 pub mod hgnc;
+pub mod efo;
