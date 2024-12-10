@@ -28,7 +28,7 @@ impl Iri {
     pub fn maybe_use_as_prefix_for(&self, iri: Iri) -> Iri {
         Iri::new(self.iri.maybe_use_as_prefix_for(iri.iri))
     }
-    pub fn strip_prefix(&self, iri: Iri) -> Option<String> {
+    pub fn strip_prefix(&self, iri: &Iri) -> Option<String> {
         self.iri.strip_prefix(&iri.iri).map(|chars| chars.collect::<String>())
     }
 }
